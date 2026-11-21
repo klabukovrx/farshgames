@@ -1,0 +1,8 @@
+{
+  "name": "farshgames",
+  "private": true,
+  "type": "module",
+  "description": "FarshGames — Telegram Mini App с играми во вселенной Ильяса Фарша",
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node test/run.mjs" }
+}
