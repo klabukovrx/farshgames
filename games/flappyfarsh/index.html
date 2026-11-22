@@ -119,14 +119,26 @@ const WORLDS=[
  {id:"sea",n:"Под водой",r:1,un:{coins:600},d:"Пузыри, водоросли и коралловые трубы."},
  {id:"space",n:"Космос",r:2,un:{stars:50},d:"Звёзды, планета с кольцами, металлические трубы."},
  {id:"hell",n:"Фаршевый ад",r:3,un:{stars:50},d:"Лава, искры и мясные трубы."}];
-const BUNDLE={k:"bundle:all",n:"Все премиум-скины и миры",stars:399};
-const findIt=(kind,id)=>(kind==="skin"?SKINS:WORLDS).find(x=>x.id===id);
+const SFXP=[
+ {id:"skin",n:"Звуки скина",r:0,un:{lvl:1},d:"У каждого скина свой голос: взмах, монета и удар."},
+ {id:"retro",n:"Ретро-аркада",r:1,un:{stars:25},d:"Чистый 8-бит, как на старой приставке."},
+ {id:"toon",n:"Мультик",r:2,un:{stars:50},d:"Пружинки, свистки и смешные «бдыщ»."},
+ {id:"laser",n:"Лазер-шоу",r:2,un:{stars:50},d:"Пиу-пиу! Каждый взмах — выстрел."},
+ {id:"meat",n:"Мясорубка",r:3,un:{stars:75},d:"Хлюп, шкворч и хруст. Фаршевее некуда."}];
+const MUSP=[
+ {id:"world",n:"Музыка мира",r:0,un:{lvl:1},d:"У каждого мира своя мелодия."},
+ {id:"synth",n:"Синтвейв",r:2,un:{stars:50},d:"Неон, закат и синтезаторы 80-х."},
+ {id:"hard",n:"Хардбасс",r:2,un:{stars:50},d:"Прыгучий бас для самых быстрых этапов."},
+ {id:"radio",n:"Фарш-радио",r:4,un:{stars:100},d:"Настоящие треки Ильяса Фарша по кругу."}];
+const BUNDLE={k:"bundle:all",n:"Всё премиум: скины, миры, звук",stars:499};
+const LISTS={skin:SKINS,world:WORLDS,sfx:SFXP,music:MUSP};
+const findIt=(kind,id)=>(LISTS[kind]||[]).find(x=>x.id===id);
 
 /* =====================================================================
    СОХРАНЕНИЕ
    ===================================================================== */
-function defaults(){return{name:"ИЛЬЯС",xp:0,coins:0,best:0,runs:0,pipes:0,tc:0,upg:{gap:0,glide:0,shield:0,magnet:0,xp:0},skin:"classic",world:"lab",bought:[],paid:[],pending:[],tried:[],ach:{},lb:[],maxStage:0,ts:0}}
-function norm(s){const d=defaults();if(!s)return d;const o=Object.assign(d,s);o.upg=Object.assign(defaults().upg,s.upg||{});["bought","paid","pending","tried","lb"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});if(!o.ach||typeof o.ach!=="object")o.ach={};if(!findIt("skin",o.skin))o.skin="classic";if(!findIt("world",o.world))o.world="lab";return o}
+function defaults(){return{name:"ИЛЬЯС",xp:0,coins:0,best:0,runs:0,pipes:0,tc:0,upg:{gap:0,glide:0,shield:0,magnet:0,xp:0},skin:"classic",world:"lab",sfx:"skin",mus:"world",so:1,mo:1,bought:[],paid:[],pending:[],tried:[],ach:{},lb:[],maxStage:0,ts:0}}
+function norm(s){const d=defaults();if(!s)return d;const o=Object.assign(d,s);o.upg=Object.assign(defaults().upg,s.upg||{});["bought","paid","pending","tried","lb"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});if(!o.ach||typeof o.ach!=="object")o.ach={};if(!findIt("skin",o.skin))o.skin="classic";if(!findIt("world",o.world))o.world="lab";if(!findIt("sfx",o.sfx))o.sfx="skin";if(!findIt("music",o.mus))o.mus="world";return o}
 function load(){
   let s=null;for(const k of[KEY].concat(OLD_KEYS)){if(s)break;try{s=JSON.parse(localStorage.getItem(k))}catch(e){}}
   if(!s){try{const v2=JSON.parse(localStorage.getItem("ilyas_flappy_v2"));if(v2){s=v2;s.skin=["classic","pirate","golden","dark","pixel","rainbow"][v2.skin|0]||"classic"}}catch(e){}}
@@ -168,7 +180,7 @@ async function buyStars(k){
   else if(st==="pending"){toast("Ждём подтверждения оплаты…");syncOwned(k)}
   refreshUI();
 }
-function autoEquip(k){const[kind,id]=k.split(":");if(kind==="skin")SV.skin=id;else if(kind==="world")SV.world=id}
+function autoEquip(k){const[kind,id]=k.split(":");if(kind==="skin")SV.skin=id;else if(kind==="world")SV.world=id;else if(kind==="sfx")SV.sfx=id;else if(kind==="music"){SV.mus=id;AU.prev=null}}
 
 /* =====================================================================
    ПРОГРЕССИЯ
@@ -204,9 +216,9 @@ function curWorld(){if(trial&&trial.kind==="world"&&state!=="menu")return trial.
 function reset(){y=260;vy=0;score=0;pipes=[];stage=0;spawned=0;shield=SV.upg.shield;inv=0;runCoins=0;shake=0;flash=0;parts.length=0;sp(W+60);sp(W+270)}
 function sp(x){spawned++;const g=spawnGap();const p={x,gy:90+Math.random()*Math.max(20,GROUND-g-180),g,done:false,coin:null};if(Math.random()<.75)p.coin={dy:(Math.random()-.5)*Math.max(10,g-70),v:spawned%10===0?5:1,x:0,y:0,ox:0,oy:0,ok:false};pipes.push(p)}
 function toast(s,long){const e=$("toast");e.textContent=s;e.style.whiteSpace=long?"normal":"nowrap";e.style.width=long?"86%":"";e.style.borderRadius=long?"3cqw":"99px";e.classList.remove("on");void e.offsetWidth;e.classList.add("on")}
-function flap(){if(state==="ready"){state="play";vy=-7.4;syncTgButtons()}else if(state==="play")vy=-7.4;if(state==="play")haptic("soft")}
+function flap(){if(state==="ready"){state="play";vy=-7.4;syncTgButtons()}else if(state==="play")vy=-7.4;if(state==="play"){haptic("soft");sfx("flap")}}
 function die(){
-  state="dead";shake=10;flash=1;haptic("err");
+  state="dead";shake=10;flash=1;haptic("err");sfx("hit");auDuck(.3);
   const before=level(),lg0=league(rating()),stg=stage,wasTrial=trial;
   const mult=1+.25*SV.upg.xp,gain=Math.round((score*12+runCoins*6+stg*20)*mult);
   SV.xp+=gain;SV.coins+=runCoins;SV.tc+=runCoins;SV.runs++;SV.pipes+=score;if(stg>SV.maxStage)SV.maxStage=stg;
@@ -223,6 +235,7 @@ function die(){
   setTimeout(()=>{if(state!=="dead")return;
     $("over").innerHTML="<div class='big'>"+score+"</div><div>"+(nb?"<span class='up'>НОВЫЙ РЕКОРД!</span>":"Рекорд: "+SV.best)+"</div><div class='card'>+"+gain+" XP · +"+runCoins+" «?» · этап "+(stg+1)+lines+"</div>"+offer+
     "<div class='row'><button class='b r tgh' data-a='again'>Ещё раз ▶</button><button class='b g' data-a='tab:skins'>👕 Скины</button><button class='b tgh' data-a='menu'>Меню</button></div>";
+    sfx(nb?"record":after>before?"level":"over");
     $("over").classList.remove("hide");syncTgButtons()},650);
 }
 function update(d){
@@ -237,13 +250,13 @@ function update(d){
   trailEmit(d,s);
   const mg=SV.upg.magnet?SV.upg.magnet*38+40:0;
   for(const p of pipes){
-    if(!p.done&&p.x+PW<BX-16){p.done=true;score++;if(score%10===0){stage++;toast("ЭТАП "+(stage+1)+" · быстрее!");haptic("medium")}}
+    if(!p.done&&p.x+PW<BX-16){p.done=true;score++;sfx("pass");if(score%10===0){stage++;toast("ЭТАП "+(stage+1)+" · быстрее!");haptic("medium");sfx("stage")}}
     if(p.coin&&!p.coin.ok){const c=p.coin;c.x=p.x+PW/2+c.ox;c.y=p.gy+p.g/2+c.dy+c.oy;const dx=BX-c.x,dy=y-c.y,dist=Math.hypot(dx,dy);
-      if(mg&&dist<mg){c.ox+=dx*.12*d;c.oy+=dy*.12*d}if(dist<26){c.ok=true;runCoins+=c.v;haptic("sel");toast(c.v>1?"+"+c.v+" «?»!":"+1 «?»")}}
-    if(inv<=0&&BX+17>p.x&&BX-17<p.x+PW&&(y-17<p.gy||y+17>p.gy+p.g)){if(shield>0){shield--;inv=70;vy=-5;y=p.gy+p.g/2;shake=6;haptic("heavy");toast("🛡 щит спас!")}else{die();return}}
+      if(mg&&dist<mg){c.ox+=dx*.12*d;c.oy+=dy*.12*d}if(dist<26){c.ok=true;runCoins+=c.v;haptic("sel");sfx(c.v>1?"big":"coin");toast(c.v>1?"+"+c.v+" «?»!":"+1 «?»")}}
+    if(inv<=0&&BX+17>p.x&&BX-17<p.x+PW&&(y-17<p.gy||y+17>p.gy+p.g)){if(shield>0){shield--;inv=70;vy=-5;y=p.gy+p.g/2;shake=6;haptic("heavy");sfx("shield");toast("🛡 щит спас!")}else{die();return}}
   }
-  if(y+20>GROUND){if(inv>0){y=GROUND-20;vy=-6}else if(shield>0){shield--;inv=70;vy=-9;y=GROUND-24;haptic("heavy");toast("🛡 щит спас!")}else{die();return}}
-  if(y<-40){if(inv<=0&&shield>0){shield--;inv=70;y=40;vy=2}else if(inv<=0){die();return}}
+  if(y+20>GROUND){if(inv>0){y=GROUND-20;vy=-6}else if(shield>0){shield--;inv=70;vy=-9;y=GROUND-24;haptic("heavy");sfx("shield");toast("🛡 щит спас!")}else{die();return}}
+  if(y<-40){if(inv<=0&&shield>0){shield--;inv=70;y=40;vy=2;sfx("shield")}else if(inv<=0){die();return}}
 }
 
 /* =====================================================================
@@ -409,6 +422,153 @@ function draw(){
 }
 
 /* =====================================================================
+   ЗВУК И МУЗЫКА. Всё синтезируется в Web Audio, файлов не нужно.
+   Исключение: «Фарш-радио» играет mp3 из папки music/ рядом с игрой.
+   ===================================================================== */
+// шаг звука: [волна, частота, частота в конце, длительность, громкость, задержка, доп.]
+// волна: s синус, q квадрат, w пила, t треугольник, n шум (доп. = добротность фильтра); у тонов доп. = вибрато, Гц
+const SND={
+ classic:{flap:[["t",380,620,.09,.32]],coin:[["q",988,988,.06,.1],["q",1319,1319,.14,.1,.06]],hit:[["n",1400,200,.25,.45,0,.8],["t",220,55,.35,.45]]},
+ pirate:{flap:[["w",200,320,.1,.16],["n",900,500,.08,.12,0,1]],coin:[["t",1568,1568,.05,.2],["t",2093,2093,.16,.18,.05]],hit:[["n",500,120,.45,.5,0,.6],["w",120,40,.45,.25]]},
+ golden:{flap:[["s",660,990,.1,.3],["s",1320,1980,.08,.08]],coin:[["s",1760,1760,.35,.22],["s",2637,2637,.3,.12,.04]],hit:[["s",520,110,.4,.45],["n",2000,400,.2,.25,0,1]]},
+ dark:{flap:[["q",150,230,.09,.13]],coin:[["q",523,523,.07,.09],["q",784,784,.14,.09,.07]],hit:[["n",300,80,.5,.55,0,.7],["q",90,35,.5,.2]]},
+ pixel:{flap:[["q",440,880,.07,.11]],coin:[["q",1046,1046,.05,.1],["q",1568,1568,.18,.1,.05]],hit:[["q",320,50,.32,.15],["n",3000,500,.2,.25,0,.5]]},
+ rainbow:{flap:[["t",523,523,.05,.25],["t",659,659,.05,.25,.03],["t",784,784,.07,.25,.06]],coin:[["s",1047,1047,.07,.2],["s",1319,1319,.07,.2,.05],["s",1568,1568,.07,.2,.1],["s",2093,2093,.2,.2,.15]],hit:[["t",420,80,.4,.45],["n",1500,300,.25,.3,0,.8]]},
+ cutlet:{flap:[["n",4000,2500,.12,.2,0,.7],["t",200,270,.08,.25]],coin:[["s",600,1300,.09,.35]],hit:[["n",260,90,.35,.6,0,1.5],["s",160,40,.35,.5]]},
+ ninja:{flap:[["n",700,2600,.15,.4,0,2.5]],coin:[["t",1760,1760,.06,.18],["n",8000,6000,.04,.15,0,2]],hit:[["n",1600,300,.25,.45,0,1],["t",320,90,.3,.35]]},
+ neon:{flap:[["w",300,620,.1,.12,0,18]],coin:[["w",880,880,.08,.08],["w",1760,1760,.16,.08,.06]],hit:[["w",520,55,.45,.18],["n",2500,300,.25,.25,0,.8]]},
+ astro:{flap:[["s",1300,280,.12,.3]],coin:[["s",1500,2600,.12,.25]],hit:[["s",900,40,.6,.45],["n",600,100,.4,.3,0,.6]]},
+ fire:{flap:[["n",1500,700,.13,.3,0,.6],["w",130,210,.1,.12]],coin:[["t",880,1320,.12,.25]],hit:[["n",700,120,.55,.6,0,.5],["w",120,30,.5,.2]]},
+ vamp:{flap:[["s",1900,2500,.05,.2],["n",3000,3000,.06,.12,.02,4]],coin:[["t",659,659,.08,.22],["t",784,784,.08,.22,.07],["t",988,988,.2,.2,.14]],hit:[["w",220,55,.5,.2,0,6],["n",900,200,.3,.3,0,.8]]},
+ robot:{flap:[["q",620,620,.04,.1],["q",930,930,.05,.1,.04]],coin:[["q",1200,1200,.04,.09],["q",1800,1800,.04,.09,.04],["q",2400,2400,.1,.09,.08]],hit:[["q",220,90,.45,.14,0,30],["n",1200,300,.3,.3,0,.6]]},
+ dj:{flap:[["n",500,1900,.1,.4,0,3],["s",130,50,.12,.5]],coin:[["s",1047,1047,.08,.25],["s",1568,1568,.18,.22,.08]],hit:[["n",2200,150,.55,.4,0,2],["s",240,35,.6,.45]]},
+ ghost:{flap:[["s",480,720,.22,.22,0,7]],coin:[["s",880,1320,.28,.2,0,5]],hit:[["s",420,90,.75,.4,0,5]]},
+ king:{flap:[["t",392,392,.08,.18],["t",494,494,.08,.15],["t",587,587,.08,.15]],coin:[["q",784,784,.07,.08],["q",988,988,.07,.08,.07],["q",1175,1175,.07,.08,.14],["q",1568,1568,.22,.09,.21]],hit:[["w",196,98,.5,.2],["n",800,200,.35,.35,0,.7]]},
+ // платные звуковые паки
+ retro:{flap:[["q",300,1200,.06,.1]],coin:[["q",1319,1319,.04,.1],["q",1976,1976,.16,.1,.04]],hit:[["q",400,40,.4,.14],["n",5000,800,.3,.25,0,.4]]},
+ toon:{flap:[["s",300,900,.14,.35,0,14]],coin:[["s",1200,2400,.06,.25],["s",2400,1200,.08,.18,.06]],hit:[["s",700,60,.5,.4,0,9],["n",400,150,.3,.4,0,1]]},
+ laser:{flap:[["w",1800,220,.13,.12],["s",2400,300,.11,.2]],coin:[["q",2000,3200,.08,.08],["s",3200,1600,.1,.15,.06]],hit:[["w",1500,40,.6,.18],["n",3000,200,.45,.35,0,.5]]},
+ meat:{flap:[["n",350,180,.12,.6,0,3],["s",120,200,.08,.3]],coin:[["n",5000,2500,.1,.3,0,.8],["s",500,900,.06,.3,.03]],hit:[["n",200,60,.5,.75,0,2],["n",3500,900,.25,.35,.05,.7],["s",110,35,.4,.5]]}};
+// звук пролёта трубы — свой у каждого мира
+const WSND={lab:[["t",1046,1046,.05,.07]],night:[["s",1318,1318,.06,.09]],sea:[["s",380,900,.07,.18]],space:[["s",2000,2700,.06,.09]],hell:[["n",900,500,.06,.15,0,1],["q",220,220,.05,.05]]};
+const JINGLE={
+ level:[["t",523,523,.14,.22],["t",659,659,.14,.22,.09],["t",784,784,.14,.22,.18],["t",1047,1047,.35,.24,.27]],
+ record:[["q",784,784,.09,.09],["q",784,784,.09,.09,.12],["q",784,784,.09,.09,.24],["q",1047,1047,.5,.1,.36],["t",1047,1047,.5,.2,.36]],
+ over:[["t",392,392,.16,.22],["t",330,330,.16,.22,.15],["t",262,262,.4,.22,.3]],
+ stage:[["q",880,880,.06,.08],["q",1175,1175,.12,.08,.07]],
+ shield:[["s",300,900,.2,.3],["n",3000,1500,.15,.15,0,1]],
+ buy:[["s",1047,1047,.1,.2],["s",1319,1319,.1,.2,.07],["s",1568,1568,.1,.2,.14],["s",2093,2093,.4,.22,.21],["n",9000,7000,.3,.08,.2,1]],
+ ui:[["t",1100,1100,.025,.05]]};
+
+// музыка: лад, аккорды по тактам, партии по 16-м долям.
+// бас: r основной тон, t терция, f квинта, o октава; арпеджио: 0–3 ноты аккорда; мелодия: ступени 0–9, a–e; «-» тянуть, «.» пауза
+// ударные: k бочка, s малый, h хэт, x бочка+хэт, y малый+хэт
+const SCALE={maj:[0,2,4,5,7,9,11],min:[0,2,3,5,7,8,10],phr:[0,1,3,5,7,8,10]};
+const SONGS={
+ lab:{bpm:118,root:60,sc:"maj",prog:[0,4,5,3],bass:["r...r.f.r...r.f.","q",.07],lead:["2-4-7-4-2-4-7---6-8-6-4-1-4-6---5-7-9-7-5-4-2---3-5-7-5-3-2-1-0-","t",.14],drum:["k.h.s.h.k.k.s.h.",.5],pad:["t",.03]},
+ night:{bpm:84,root:57,sc:"min",prog:[0,5,2,6],bass:["r.......r...f...","t",.2],arp:["0...1...2...1...","s",.06,12],lead:["4.......2...0.......3...2...0...2...4...6...4.......6...8...6...","s",.11,12],drum:["k.h.s.h.k.hks.h.",.4],pad:["s",.03],echo:.3},
+ sea:{bpm:92,root:65,sc:"maj",prog:[0,3,5,4],bass:["r.......f.......","s",.26],arp:["0123210301232103","t",.06,12],lead:["7-------6---4---5-------4---3---5-------7---9---8-------7---6---","s",.1,12],drum:["k.......s.......",.35],pad:["s",.03],echo:.35},
+ space:{bpm:108,root:62,sc:"min",prog:[0,5,3,4],bass:["r.r.r.r.o.r.r.f.","w",.06],arp:["0120120120120123","q",.035,12],lead:["0---4---7---6-4-5---4---3-------3---5---7---8-7-4-------........","w",.06,12],drum:["k...s...k...s.h.",.45],pad:["w",.022],echo:.3},
+ hell:{bpm:150,root:52,sc:"phr",prog:[0,1,0,6],bass:["rrrr.rr.rrrr.r.r","w",.05],lead:["0.0.1.0.0.3.2.1.0.0.1.0.4.3.2.1.0.0.1.0.0.3.2.1.7.6.5.4.3.2.1.0.","q",.035,12],drum:["k.k.s.kkk.k.s.k.",.6],dist:1},
+ synth:{bpm:100,root:57,sc:"min",prog:[0,5,2,6],bass:["r.ro.rr.r.ro.r.r","w",.06],arp:["0.1.2.3.2.1.0.1.","q",.03,12],lead:["4---7---6---4---5---4---2-------2---4---6---7---8---7---6---4---","w",.06,12],drum:["k...s...k...s...",.5],pad:["w",.025],echo:.3},
+ hard:{bpm:140,root:62,sc:"min",prog:[0,0,5,4],bass:["..r...r...r...o.","w",.07],lead:["0.0.3.0.5.4.3.0.0.0.3.0.7.5.4.3.","q",.04,12],drum:["k.h.k.h.k.h.y.h.",.6],dist:1}};
+// «Фарш-радио»: файлы games/flappyfarsh/music/<id>.mp3
+const TRACKS=[["farsh","Ильяс Фарш"],["skazanie","Сказание о Фарше Ильясе"],["nemilost","Ильясофаршева немилость"],["24-hours-rap","24 hours rap"],["24-chasa","Двадцать четыре часа без глаза"],["buterbrody","Бутерброды люблю очень"],["lift","Lift"],["mem-pobedil","Мем победил: финал"],["pobednyj-perehod","Победный переход"],["s-dr","С др"],["altushka","Он хотел себе альтушку"]];
+
+const AU={ctx:null,cur:null,step:0,next:0,prev:null,radio:null,ri:0,radioOK:false,duck:1};
+const WAVE={s:"sine",q:"square",w:"sawtooth",t:"triangle"};
+const hz=m=>440*Math.pow(2,(m-69)/12);
+function auInit(){
+  if(AU.ctx){if(AU.ctx.state==="suspended"&&!document.hidden)AU.ctx.resume().catch(()=>{});return}
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  let c;try{c=new C()}catch(e){return}AU.ctx=c;
+  const comp=c.createDynamicsCompressor();comp.connect(c.destination);
+  AU.sfx=c.createGain();AU.sfx.gain.value=.8;AU.sfx.connect(comp);
+  AU.mus=c.createGain();AU.mus.gain.value=SV.mo||AU.prev?.55:0;AU.mus.connect(comp);
+  AU.rg=c.createGain();AU.rg.gain.value=.55;AU.rg.connect(AU.mus);
+  AU.dly=c.createDelay(1);const fb=c.createGain();fb.gain.value=.35;AU.dly.connect(fb);fb.connect(AU.dly);AU.dg=c.createGain();AU.dg.gain.value=0;AU.dly.connect(AU.dg);AU.dg.connect(AU.mus);
+  AU.shp=c.createWaveShaper();const cu=new Float32Array(1024);for(let i=0;i<1024;i++){const x=i/512-1;cu[i]=Math.tanh(x*6)}AU.shp.curve=cu;const sg=c.createGain();sg.gain.value=.5;AU.shp.connect(sg);sg.connect(AU.mus);
+  AU.lp=c.createBiquadFilter();AU.lp.type="lowpass";AU.lp.frequency.value=1400;AU.lp.connect(AU.mus);
+  const len=c.sampleRate*2,nb=c.createBuffer(1,len,c.sampleRate),ch=nb.getChannelData(0);for(let i=0;i<len;i++)ch[i]=Math.random()*2-1;AU.noise=nb;
+  const b=c.createBuffer(1,1,22050),s=c.createBufferSource();s.buffer=b;s.connect(c.destination);s.start(0);
+  if(c.state==="suspended")c.resume().catch(()=>{});
+}
+const auOn=()=>AU.ctx&&AU.ctx.state==="running";
+/** проиграть набор шагов; k — множитель высоты */
+function play(list,k=1,dest){
+  if(!auOn()||!list)return;const c=AU.ctx,t0=c.currentTime+.01;dest=dest||AU.sfx;
+  for(const s of list){const[w,f,f2,d,v,a=0,x=0]=s,t=t0+a,g=c.createGain();
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+Math.min(.012,d/4));g.gain.exponentialRampToValueAtTime(.0001,t+d);g.connect(dest);
+    if(w==="n"){const src=c.createBufferSource(),bf=c.createBiquadFilter();src.buffer=AU.noise;bf.type="bandpass";bf.Q.value=x||1;bf.frequency.setValueAtTime(f*k,t);bf.frequency.exponentialRampToValueAtTime(Math.max(30,f2*k),t+d);src.connect(bf);bf.connect(g);src.start(t,Math.random()*1.5);src.stop(t+d+.03)}
+    else{const o=c.createOscillator();o.type=WAVE[w];o.frequency.setValueAtTime(f*k,t);if(f2!==f)o.frequency.exponentialRampToValueAtTime(Math.max(30,f2*k),t+d);
+      if(x){const l=c.createOscillator(),lg=c.createGain();l.frequency.value=x;lg.gain.value=f*k*.05;l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+d+.03)}
+      o.connect(g);o.start(t);o.stop(t+d+.03)}}
+}
+/** какой голос сейчас: пак звуков или звуки скина (в пробном полёте — всегда скина) */
+function voice(){const p=findIt("sfx",SV.sfx);if(p&&p.id!=="skin"&&has("sfx",p)&&!trial)return SND[p.id];return SND[curSkin().id]||SND.classic}
+function sfx(ev){if(!SV.so)return;
+  if(ev==="pass")return play(WSND[curWorld()]);
+  if(JINGLE[ev])return play(JINGLE[ev]);
+  const v=voice();
+  if(ev==="big"){play(v.coin,1.26);setTimeout(()=>play(v.coin,1.5),110);return}
+  play(v[ev]);
+}
+function hearPack(list){play(list.flap);setTimeout(()=>play(list.flap,1.06),230);setTimeout(()=>play(list.coin),520);setTimeout(()=>play(list.hit),950)}
+
+/* ---------- музыка ---------- */
+function wantMus(){
+  if(AU.prev)return AU.prev;if(!SV.mo)return null;
+  const m=findIt("music",SV.mus);
+  if(m&&m.id!=="world"&&has("music",m)&&!trial&&!(m.id==="radio"&&!AU.radioOK))return m.id==="radio"?"radio":"p:"+m.id;
+  return "w:"+curWorld();
+}
+function tone(t,m,d,w,v,dist,echo){const c=AU.ctx,o=c.createOscillator(),g=c.createGain();o.type=WAVE[w];o.frequency.value=hz(m);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.008);g.gain.exponentialRampToValueAtTime(v*.5,t+Math.min(d,.12));g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g);g.connect(dist?AU.shp:AU.mus);if(echo)g.connect(AU.dly);o.start(t);o.stop(t+d+.02)}
+function padN(t,m,d,w,v){const c=AU.ctx;for(const det of[-7,7]){const o=c.createOscillator(),g=c.createGain();o.type=WAVE[w];o.frequency.value=hz(m);o.detune.value=det;
+  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(v,t+d*.3);g.gain.linearRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(AU.lp);o.start(t);o.stop(t+d+.02)}}
+function drum(t,ch,v){const c=AU.ctx;
+  if(ch==="k"||ch==="x"){const o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(170,t);o.frequency.exponentialRampToValueAtTime(48,t+.12);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+.22);o.connect(g);g.connect(AU.mus);o.start(t);o.stop(t+.25);}
+  if(ch==="s"||ch==="y"){const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=AU.noise;f.type="highpass";f.frequency.value=1200;g.gain.setValueAtTime(v*.55,t);g.gain.exponentialRampToValueAtTime(.0001,t+.14);s.connect(f);f.connect(g);g.connect(AU.mus);s.start(t,Math.random());s.stop(t+.16)}
+  if(ch==="h"||ch==="x"||ch==="y"){const s=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();s.buffer=AU.noise;f.type="highpass";f.frequency.value=7500;g.gain.setValueAtTime(v*.22,t);g.gain.exponentialRampToValueAtTime(.0001,t+.04);s.connect(f);f.connect(g);g.connect(AU.mus);s.start(t,Math.random());s.stop(t+.05)}}
+function schedStep(S,i,t){
+  const st=60/S.bpm/4,p=S.prog[Math.floor(i/16)%S.prog.length],sc=SCALE[S.sc];
+  const m=(d,o)=>S.root+o+12*Math.floor(d/7)+sc[((d%7)+7)%7];
+  const at=(s,k)=>s[k%s.length],len=(s,k)=>{let n=1;while(n<16&&s[(k+n)%s.length]==="-")n++;return n*st};
+  if(S.drum){const ch=at(S.drum[0],i);if(ch!==".")drum(t,ch,S.drum[1])}
+  if(S.bass){const ch=at(S.bass[0],i),d={r:0,t:2,f:4,o:7}[ch];if(d!==undefined)tone(t,m(p+d,-12),len(S.bass[0],i)*.9,S.bass[1],S.bass[2],S.dist,0)}
+  if(S.arp){const ch=at(S.arp[0],i);if(ch>="0"&&ch<="3")tone(t,m(p+[0,2,4,7][+ch],S.arp[3]||0),st*.9,S.arp[1],S.arp[2],0,1)}
+  if(S.lead){const ch=at(S.lead[0],i);if(ch!=="."&&ch!=="-")tone(t,m(parseInt(ch,36),S.lead[3]||0),len(S.lead[0],i)*.95,S.lead[1],S.lead[2],S.dist,1)}
+  if(S.pad&&i%16===0)for(const d of[0,2,4])padN(t,m(p+d,-12),st*16,S.pad[0],S.pad[1]);
+}
+function radioSrc(){return "music/"+TRACKS[AU.ri][0]+".mp3"}
+function radioPlay(){
+  if(!AU.radio){const a=new Audio();a.preload="auto";AU.radio=a;
+    a.addEventListener("ended",()=>radioNext(1));a.addEventListener("error",()=>{if(AU.cur==="radio")setTimeout(()=>radioNext(1),800)});
+    try{AU.ctx.createMediaElementSource(a).connect(AU.rg)}catch(e){}
+    AU.ri=Math.floor(Math.random()*TRACKS.length);a.src=radioSrc()}
+  AU.radio.play().then(()=>toast("🎵 "+TRACKS[AU.ri][1])).catch(()=>{});
+}
+function radioNext(quiet){if(!AU.radio)return;AU.ri=(AU.ri+1)%TRACKS.length;AU.radio.src=radioSrc();if(AU.cur==="radio")AU.radio.play().then(()=>{if(!quiet||$("modal").classList.contains("hide"))toast("🎵 "+TRACKS[AU.ri][1])}).catch(()=>{});if(!quiet)refreshUI()}
+function auTick(){
+  if(!auOn())return;const c=AU.ctx,w=wantMus();
+  if(w!==AU.cur){if(AU.cur==="radio"&&AU.radio)AU.radio.pause();AU.cur=w;AU.step=0;AU.next=c.currentTime+.1;
+    const S=w&&w!=="radio"?SONGS[w.slice(2)]:null;AU.dg.gain.setTargetAtTime(S&&S.echo?S.echo:0,c.currentTime,.05);if(S)AU.dly.delayTime.value=60/S.bpm*.75;
+    if(w==="radio")radioPlay()}
+  const S=w&&w!=="radio"?SONGS[w.slice(2)]:null;if(!S)return;
+  if(AU.next<c.currentTime-.1)AU.next=c.currentTime+.05;
+  const st=60/S.bpm/4;while(AU.next<c.currentTime+.2){schedStep(S,AU.step,AU.next);AU.next+=st;AU.step++}
+}
+function auVol(){if(!AU.ctx)return;AU.mus.gain.setTargetAtTime(SV.mo||AU.prev?.55*AU.duck:0,AU.ctx.currentTime,.15)}
+function auDuck(v){AU.duck=v;auVol()}
+setInterval(auTick,40);
+["pointerdown","touchstart","keydown","click"].forEach(e=>document.addEventListener(e,()=>{auInit();auTick()},{capture:true,passive:true}));
+document.addEventListener("visibilitychange",()=>{if(!AU.ctx)return;
+  if(document.hidden){AU.ctx.suspend().catch(()=>{});if(AU.radio)AU.radio.pause()}
+  else{AU.ctx.resume().then(()=>{if(AU.cur==="radio"&&AU.radio)AU.radio.play().catch(()=>{})}).catch(()=>{})}});
+fetch(TRACKS[0][0]&&"music/"+TRACKS[0][0]+".mp3",{method:"HEAD"}).then(r=>{AU.radioOK=r.ok&&!/html/.test(r.headers.get("content-type")||"");refreshUI()}).catch(()=>{});
+
+/* =====================================================================
    ИНТЕРФЕЙС
    ===================================================================== */
 const hide=id=>$(id).classList.add("hide"),show=id=>$(id).classList.remove("hide");
@@ -419,7 +579,7 @@ function menuUI(){
   "<div class='note'>"+(tryOn?"<b class='up'>Примерка: "+esc(findIt(tryOn.kind,tryOn.id).n)+"</b>":esc(sk.n)+" · "+esc(wd.n))+" · скинов: "+ownedCount()+"/"+SKINS.length+"</div>"+
   "<input class='nm' id='nm' maxlength='12' value='"+esc(SV.name)+"' aria-label='Имя'>"+
   "<button class='b r tgh' data-a='play' style='font-size:6cqw;padding:3cqw 10cqw'>Играть ▶</button>"+
-  "<div class='row'><button class='b g' data-a='tab:skins'>👕 Скины</button><button class='b g' data-a='tab:worlds'>🌆 Миры</button><button class='b t' data-a='tab:shop'>🛒 Улучшения</button><button class='b t' data-a='tab:rate'>🏆</button><button class='b t' data-a='tab:ach'>🎖</button></div><button class='b tgh' data-a='hub' style='font-size:3.4cqw;padding:1.4cqw 3cqw'>← Все игры FarshGames</button>";
+  "<div class='row'><button class='b g' data-a='tab:skins'>👕 Скины</button><button class='b g' data-a='tab:worlds'>🌆 Миры</button><button class='b t' data-a='tab:shop'>🛒 Улучшения</button><button class='b g' data-a='tab:audio'>🎧 Звук</button><button class='b t' data-a='tab:rate'>🏆</button><button class='b t' data-a='tab:ach'>🎖</button></div><button class='b tgh' data-a='hub' style='font-size:3.4cqw;padding:1.4cqw 3cqw'>← Все игры FarshGames</button>";
   $("nm").oninput=e=>{SV.name=(e.target.value||"ИЛЬЯС").slice(0,12);save()};
 }
 function priceTag(kind,it){
@@ -435,8 +595,21 @@ function gridHTML(kind){
 }
 function bundleHTML(){
   if(SV.paid.includes(BUNDLE.k))return "<div class='bundle'><b>Все премиум-предметы открыты ⭐</b></div>";
-  const prem=SKINS.concat(WORLDS).filter(i=>i.un.stars),full=prem.reduce((a,i)=>a+i.un.stars,0);
-  return "<div class='bundle'><div><b>"+BUNDLE.n+"</b><br><small>"+SKINS.filter(i=>i.un.stars).length+" скинов и "+WORLDS.filter(i=>i.un.stars).length+" мира · вместо ⭐ "+full+"</small></div><button class='b r' data-a='buy:"+BUNDLE.k+"' "+(buying?"disabled":"")+">⭐ "+starPrice(BUNDLE.k,BUNDLE.stars)+"</button></div>";
+  const n=l=>l.filter(i=>i.un.stars).length,full=SKINS.concat(WORLDS,SFXP,MUSP).filter(i=>i.un.stars).reduce((a,i)=>a+i.un.stars,0);
+  return "<div class='bundle'><div><b>"+BUNDLE.n+"</b><br><small>"+n(SKINS)+" скинов, "+n(WORLDS)+" мира, "+(n(SFXP)+n(MUSP))+" паков звука и музыки · вместо ⭐ "+full+"</small></div><button class='b r' data-a='buy:"+BUNDLE.k+"' "+(buying?"disabled":"")+">⭐ "+starPrice(BUNDLE.k,BUNDLE.stars)+"</button></div>";
+}
+function audioHTML(){
+  const tg=(k,on,n)=>"<button class='b"+(on?" t":"")+"' data-a='tog:"+k+"'>"+n+": "+(on?"вкл":"выкл")+"</button>";
+  const row=(kind,it)=>{const k=kind+":"+it.id,mine=has(kind,it),cur=(kind==="sfx"?SV.sfx:SV.mus)===it.id,soon=it.id==="radio"&&!AU.radioOK;
+    const pk=kind==="music"?(it.id==="world"?"w:"+SV.world:it.id==="radio"?"radio":"p:"+it.id):null,on=pk&&AU.prev===pk;
+    let b;if(soon)b="<button class='b' disabled>скоро</button>";else if(mine)b=cur?"<button class='b' disabled>вкл ✓</button>":"<button class='b r' data-a='equip:"+k+"'>Включить</button>";
+    else b="<button class='b g' data-a='buy:"+k+"' "+(buying?"disabled":"")+">⭐ "+starPrice(k,it.un.stars)+"</button>";
+    const extra=it.id==="radio"&&AU.cur==="radio"?"<br><small>Сейчас: "+esc(TRACKS[AU.ri][1])+"</small>":it.id==="radio"?"<br><small>"+TRACKS.length+" песен</small>":"";
+    return "<div class='it'"+(cur?" style='background:#d7ecef'":"")+"><div><b>"+esc(it.n)+"</b> <span class='rr' style='background:"+RAR[it.r][1]+"'>"+RAR[it.r][0]+"</span><small>"+esc(it.d)+"</small>"+extra+"</div><div class='row' style='flex-wrap:nowrap;width:auto'>"+(soon?"":"<button class='b t' data-a='hear:"+k+"' aria-label='Послушать'>"+(on?"■":"▶")+"</button>")+b+"</div></div>"};
+  return "<div class='row'>"+tg("so",SV.so,"🔊 Звуки")+tg("mo",SV.mo,"🎵 Музыка")+(AU.cur==="radio"?"<button class='b' data-a='rnext'>⏭ Трек</button>":"")+"</div>"+
+    bundleHTML()+"<b>Звуковые паки</b><div class='list'>"+SFXP.map(i=>row("sfx",i)).join("")+"</div>"+
+    "<b>Музыка</b><div class='list'>"+MUSP.map(i=>row("music",i)).join("")+"</div>"+
+    "<div class='note'>Пак звуков заменяет голос скина. «Музыка мира» — у каждого мира своя мелодия. ▶ — послушать перед покупкой. На iPhone звук не слышен в беззвучном режиме.</div>"+storeNote();
 }
 function storeNote(){
   if(!inTg)return "<div class='note'>Звёздные скины покупаются в FarshGames внутри Telegram. Здесь их можно примерить и опробовать в пробном полёте.</div>";
@@ -444,7 +617,7 @@ function storeNote(){
   return "";
 }
 function modalUI(){
-  const L=lvlOf(SV.xp),tabs=[["skins","👕 Скины"],["worlds","🌆 Миры"],["shop","🛒 Улучшения"],["rate","🏆 Рейтинг"],["ach","🎖 Награды"]];
+  const L=lvlOf(SV.xp),tabs=[["skins","👕 Скины"],["worlds","🌆 Миры"],["audio","🎧 Звук"],["shop","🛒 Улучшения"],["rate","🏆 Рейтинг"],["ach","🎖 Награды"]];
   let h="<div class='tabs'>"+tabs.map(([k,n])=>"<button class='b"+(k===tab&&!detail?" on":"")+"' data-a='tab:"+k+"'>"+n+"</button>").join("")+"<button class='b tgh' data-a='close'>✕</button></div>";
   if(detail){
     const it=findIt(detail.kind,detail.id),k=detail.kind+":"+it.id,mine=has(detail.kind,it),cur=detail.kind==="skin"?SV.skin===it.id:SV.world===it.id;
@@ -455,10 +628,11 @@ function modalUI(){
     else btn="<button class='b g' data-a='buy:"+k+"' "+(buying?"disabled":"")+">⭐ Купить за "+starPrice(k,it.un.stars)+"</button>";
     const canTrial=!mine&&!SV.tried.includes(k);
     h+="<div class='det'><canvas id='dcv' width='300' height='250'></canvas><span class='rr' style='background:"+RAR[it.r][1]+"'>"+RAR[it.r][0]+"</span><h2>"+esc(it.n)+"</h2><p>"+esc(it.d)+"</p>"+
-      "<div class='row'>"+btn+"</div><div class='row'>"+(mine?"":"<button class='b t' data-a='tryon:"+k+"'>👀 Примерить в меню</button>")+(canTrial?"<button class='b t' data-a='trial:"+k+"'>🕊 Пробный полёт</button>":"")+"<button class='b tgh' data-a='back'>← Назад</button></div>"+
+      "<div class='row'>"+btn+"</div><div class='row'>"+(detail.kind==="skin"?"<button class='b t' data-a='hear:skin:"+it.id+"'>🔊 Звуки</button>":"<button class='b t' data-a='hear:world:"+it.id+"'>"+(AU.prev==="w:"+it.id?"■ Стоп":"🎵 Музыка мира")+"</button>")+(mine?"":"<button class='b t' data-a='tryon:"+k+"'>👀 Примерить в меню</button>")+(canTrial?"<button class='b t' data-a='trial:"+k+"'>🕊 Пробный полёт</button>":"")+"<button class='b tgh' data-a='back'>← Назад</button></div>"+
       (it.un.coins&&!mine?"<div class='note'>У тебя "+SV.coins+" «?». Монеты дают за полёты.</div>":"")+(it.un.stars&&!mine?storeNote():"")+"</div>";
   }else if(tab==="skins"){h+=bundleHTML()+gridHTML("skin")+storeNote()}
   else if(tab==="worlds"){h+=gridHTML("world")+storeNote()}
+  else if(tab==="audio"){h+=audioHTML()}
   else if(tab==="shop"){
     h+="<div>«?»: <b>"+SV.coins+"</b></div><div class='list'>"+UPG.map(u=>{const l=SV.upg[u.k],mx=l>=u.max,c=u.cost(l);
       return "<div class='it'><div><b>"+u.n+"</b><small>"+u.d+"</small><div class='pips'>"+[...Array(u.max)].map((_,i)=>"<i class='"+(i<l?"f":"")+"'></i>").join("")+"</div></div><button class='b r' data-a='upg:"+u.k+"' "+(mx||SV.coins<c?"disabled":"")+">"+(mx?"макс.":c+" «?»")+"</button></div>"}).join("")+"</div><div class='note'>Улучшения покупаются только за «?» из игры, не за звёзды.</div>";
@@ -492,26 +666,34 @@ function drawDetail(){
   drawParts(g,detParts);g.save();g.translate(150,by);g.scale(1.45,1.45);bird(g,0,0,Math.sin(t/20)*.08,S,t);g.restore();g.restore();
 }
 function openModal(k){tab=k;detail=null;modalUI();hide("menu");hide("over");show("modal");syncTgButtons()}
-function closeModal(){hide("modal");detail=null;if(state==="menu"){menuUI();show("menu")}else if(state==="dead")show("over");syncTgButtons()}
+function closeModal(){hide("modal");detail=null;if(AU.prev){AU.prev=null;auVol()}if(state==="menu"){menuUI();show("menu")}else if(state==="dead")show("over");syncTgButtons()}
 function refreshUI(){if(!$("modal").classList.contains("hide"))modalUI();else if(state==="menu")menuUI();syncTgButtons()}
-function toMenu(){state="menu";trial=null;$("trial").classList.add("hide");reset();hide("over");hide("modal");menuUI();show("menu");syncTgButtons()}
+function toMenu(){state="menu";trial=null;auDuck(1);$("trial").classList.add("hide");reset();hide("over");hide("modal");menuUI();show("menu");syncTgButtons()}
 function startReady(){
   if(state==="dead"&&$("over").classList.contains("hide"))return;
-  tryOn=null;reset();state="ready";hide("menu");hide("over");hide("modal");
+  tryOn=null;AU.prev=null;auDuck(1);reset();state="ready";hide("menu");hide("over");hide("modal");
   if(trial){$("trial").textContent="ПРОБНЫЙ ПОЛЁТ · "+findIt(trial.kind,trial.id).n;show("trial")}
   syncTgButtons();
 }
-function burst(){for(let i=0;i<40;i++)parts.push({k:i%2?"gold2":"stars",x:W/2+(Math.random()-.5)*60,y:H/2,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,life:0,max:50,h:0,r:Math.random()})}
+function burst(){sfx("buy");for(let i=0;i<40;i++)parts.push({k:i%2?"gold2":"stars",x:W/2+(Math.random()-.5)*60,y:H/2,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,life:0,max:50,h:0,r:Math.random()})}
 document.addEventListener("click",e=>{
-  const el=e.target.closest("[data-a]");if(!el)return;const a=el.dataset.a;haptic("light");
+  const el=e.target.closest("[data-a]");if(!el)return;const a=el.dataset.a;haptic("light");if(!a.startsWith("hear:"))sfx("ui");
   if(a==="play"||a==="again")startReady();
   else if(a==="hub")F.goHub();
   else if(a==="menu")toMenu();
   else if(a.startsWith("tab:")){if($("modal").classList.contains("hide"))openModal(a.slice(4));else{tab=a.slice(4);detail=null;modalUI()}}
   else if(a==="close")closeModal();
-  else if(a==="back"){detail=null;modalUI()}
+  else if(a==="back"){detail=null;if(AU.prev){AU.prev=null;auVol()}modalUI()}
   else if(a.startsWith("det:")){const[,kind,id]=a.split(":");detail={kind,id};detParts.length=0;modalUI()}
-  else if(a.startsWith("equip:")){const[kind,id]=a.slice(6).split(":");if(has(kind,findIt(kind,id))){if(kind==="skin")SV.skin=id;else SV.world=id;tryOn=null;save();haptic("ok");modalUI()}}
+  else if(a.startsWith("equip:")){const[kind,id]=a.slice(6).split(":");if(has(kind,findIt(kind,id))){autoEquip(kind+":"+id);tryOn=null;save();haptic("ok");if(kind==="sfx")hearPack(voice());if(kind==="music"&&!SV.mo){SV.mo=1;save();auVol()}modalUI()}}
+  else if(a.startsWith("hear:")){const[,kind,id]=a.split(":");auInit();
+    if(kind==="skin")hearPack(SND[id]||SND.classic);
+    else if(kind==="sfx")hearPack(id==="skin"?SND[SV.skin]||SND.classic:SND[id]);
+    else{const pk=kind==="world"?"w:"+id:id==="world"?"w:"+SV.world:id==="radio"?"radio":"p:"+id;AU.prev=AU.prev===pk?null:pk;auVol();setTimeout(auTick,0)}
+    modalUI()}
+  else if(a==="tog:so"){SV.so=SV.so?0:1;save();modalUI()}
+  else if(a==="tog:mo"){SV.mo=SV.mo?0:1;save();auVol();modalUI()}
+  else if(a==="rnext"){radioNext(0)}
   else if(a.startsWith("coin:")){const[kind,id]=a.slice(5).split(":"),it=findIt(kind,id),k=kind+":"+id;if(!SV.bought.includes(k)&&SV.coins>=it.un.coins){SV.coins-=it.un.coins;SV.bought.push(k);autoEquip(k);save();haptic("ok");toast("Открыто: "+it.n);burst();refreshUI()}}
   else if(a.startsWith("buy:"))buyStars(a.slice(4));
   else if(a.startsWith("tryon:")){const[kind,id]=a.slice(6).split(":");tryOn={kind,id};closeModal();toast("Примерка: "+findIt(kind,id).n)}
