@@ -38,6 +38,7 @@ async function onPaid(m) {
   const it = lookup(p.i);
   if (!it) { console.error("paid for unknown item", sp); return; }
   await savePayment(sp.telegram_payment_charge_id, { uid, item: p.i, stars: sp.total_amount, t: Date.now() });
+  console.log("payment", JSON.stringify({ uid, item: p.i, stars: sp.total_amount, charge: sp.telegram_payment_charge_id }));
   await grant(uid, itemsFor(p.i)); // повторная выдача безопасна
   await tgApi("sendMessage", { chat_id: m.chat.id, text: `Спасибо! «${it.title}» уже в ${it.gameTitle}. Открой магазин в игре, чтобы надеть.` }).catch(() => {});
 }
